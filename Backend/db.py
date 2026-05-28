@@ -5,18 +5,21 @@ fetching schema metadata and seeding the demo dataset.
 """
 
 import logging
+from contextlib import contextmanager
+from typing import Iterator
+
 import psycopg2
-import psycopg2.extras 
+import psycopg2.extras
 from psycopg2 import pool
 
 from config import Config
 
 logger = logging.getLogger(__name__)
 
-_pool: psycopg2.pool.SimpleConnectionPool | None = None
+_pool: pool.SimpleConnectionPool | None = None
 
 
-def _get_pool() -> psycopg2.pool.SimpleConnectionPool:
+def _get_pool() -> pool.SimpleConnectionPool:
     """Return (and lazily create) the shared connection pool."""
     global _pool
     if _pool is None or _pool.closed:
@@ -53,6 +56,19 @@ def get_db_connection() -> psycopg2.extensions.connection:
 def close_db_connection(conn: psycopg2.extensions.connection) -> None:
     """Return a borrowed connection back to the pool."""
     _get_pool().putconn(conn)
+
+
+@contextmanager
+def db_connection() -> Iterator[psycopg2.extensions.connection]:
+    """
+    Context manager for a pooled connection.
+    Ensures every borrowed connection is returned to the pool.
+    """
+    conn = get_db_connection()
+    try:
+        yield conn
+    finally:
+        close_db_connection(conn)
 
 
 
@@ -223,21 +239,20 @@ def seed_database() -> None:
     Safe to call repeatedly; uses ON CONFLICT DO NOTHING guards.
     Run via:  python db.py
     """
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cur:
+    with db_connection() as conn:
+        try:
             # Temporarily disable autocommit so we can run a multi-statement block
             conn.autocommit = False
-            cur.execute(SEED_SQL)
+            with conn.cursor() as cur:
+                cur.execute(SEED_SQL)
             conn.commit()
-        logger.info("Database seeded successfully.")
-    except Exception as exc:
-        conn.rollback()
-        logger.error("Seeding failed: %s", exc)
-        raise
-    finally:
-        conn.autocommit = True
-        close_db_connection(conn)
+            logger.info("Database seeded successfully.")
+        except Exception as exc:
+            conn.rollback()
+            logger.error("Seeding failed: %s", exc)
+            raise
+        finally:
+            conn.autocommit = True
 
 
 if __name__ == "__main__":

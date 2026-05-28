@@ -20,12 +20,9 @@ model-agnostic; all tested models produce valid SQL when given it.
 """
 
 import re
-import logging
 import requests
 
 from config import Config
-
-logger = logging.getLogger(__name__)
 
 
 DB_SCHEMA_DESCRIPTION = """
@@ -126,6 +123,7 @@ def translate_to_sql(prompt: str) -> str:
 
     return sql
 
+
 def _clean_sql(raw: str) -> str:
     """
     Strip markdown code fences and any surrounding whitespace that some
@@ -170,7 +168,6 @@ def _validate_sql(sql: str) -> None:
         )
 
     for keyword in Config.BLOCKED_SQL_KEYWORDS:
-        
         if re.search(rf"\b{keyword}\b", sql, re.IGNORECASE):
             raise ValueError(
                 f"Generated SQL contains a blocked keyword: '{keyword}'. "

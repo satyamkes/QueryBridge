@@ -14,7 +14,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from config import Config
-from db import get_db_connection, fetch_schema_info, close_db_connection
+from db import db_connection, fetch_schema_info
 from llm import translate_to_sql, count_tokens
 
 logging.basicConfig(
@@ -49,19 +49,14 @@ def health():
     """
     db_ok = False
     db_error = None
-    conn = None
-
     try:
-        conn = get_db_connection()
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1")
-        db_ok = True
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+            db_ok = True
     except Exception as exc:
         db_error = str(exc)
         logger.warning("Health check – DB unreachable: %s", exc)
-    finally:
-        if conn:
-            close_db_connection(conn)
 
     return success_response({
         "service": "QueryBridge API",
@@ -80,17 +75,13 @@ def schema():
     connected PostgreSQL database. The frontend Schema Sidebar can call
     this to show real counts instead of the hard-coded mock values.
     """
-    conn = None
     try:
-        conn = get_db_connection()
-        tables = fetch_schema_info(conn)
+        with db_connection() as conn:
+            tables = fetch_schema_info(conn)
         return success_response({"tables": tables})
     except Exception as exc:
         logger.error("Schema fetch failed: %s", exc)
         return error_response(f"Schema fetch failed: {exc}", 500)
-    finally:
-        if conn:
-            close_db_connection(conn)
 
 
 @app.route("/api/generate", methods=["POST"])
@@ -115,7 +106,6 @@ def generate():
     The frontend (src/services/api.js → generateSqlQuery) maps these fields
     directly onto the queryResult state object.
     """
-    
     body = request.get_json(silent=True) or {}
     prompt = (body.get("prompt") or "").strip()
 
@@ -130,28 +120,23 @@ def generate():
     logger.info("Received prompt: %s", prompt)
     overall_start = time.perf_counter()
 
-    conn = None
     try:
-       
         sql_start = time.perf_counter()
         sql_query = translate_to_sql(prompt)
         sql_elapsed = time.perf_counter() - sql_start
 
         logger.info("Generated SQL (%.0fms): %s", sql_elapsed * 1000, sql_query)
 
-       
-        conn = get_db_connection()
-        with conn.cursor() as cur:
-            exec_start = time.perf_counter()
-            cur.execute(sql_query)
-            exec_elapsed = time.perf_counter() - exec_start
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                exec_start = time.perf_counter()
+                cur.execute(sql_query)
+                exec_elapsed = time.perf_counter() - exec_start
 
-            
-            columns = [desc[0] for desc in cur.description] if cur.description else []
+                columns = [desc[0] for desc in cur.description] if cur.description else []
 
-           
-            raw_rows = cur.fetchall()
-            rows = [dict(zip(columns, row)) for row in raw_rows]
+                raw_rows = cur.fetchall()
+                rows = [dict(zip(columns, row)) for row in raw_rows]
 
         logger.info(
             "Query executed in %.0fms – returned %d rows", exec_elapsed * 1000, len(rows)
@@ -177,11 +162,6 @@ def generate():
     except Exception as exc:
         logger.error("Unhandled error in /api/generate: %s", exc, exc_info=True)
         return error_response(f"Server error: {exc}", 500)
-
-    finally:
-        if conn:
-            close_db_connection(conn)
-
 
 if __name__ == "__main__":
     logger.info(
