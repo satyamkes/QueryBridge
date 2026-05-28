@@ -27,9 +27,6 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-# ─── Schema Snapshot ──────────────────────────────────────────────────────────
-# Kept in sync with db.py / README. Injected into every LLM prompt so the
-# model doesn't have to guess column names.
 
 DB_SCHEMA_DESCRIPTION = """
 Tables in the PostgreSQL database:
@@ -116,7 +113,6 @@ def translate_to_sql(prompt: str) -> str:
 
     data = response.json()
 
-    # Navigate the Ollama /api/chat response envelope
     raw_text: str = (
         data.get("message", {}).get("content", "")
         or data.get("response", "")
@@ -146,8 +142,6 @@ def _clean_sql(raw: str) -> str:
     cleaned = re.sub(r"```(?:sql)?\s*", "", raw, flags=re.IGNORECASE)
     cleaned = cleaned.replace("```", "").strip()
 
-    # If the model included a preamble sentence before the SQL, try to
-    # extract just the SELECT block
     select_match = re.search(r"(SELECT\b.*)", cleaned, re.IGNORECASE | re.DOTALL)
     if select_match:
         cleaned = select_match.group(1).strip()
@@ -176,7 +170,7 @@ def _validate_sql(sql: str) -> None:
         )
 
     for keyword in Config.BLOCKED_SQL_KEYWORDS:
-        # \b word-boundary so "created_at" doesn't match "CREATE"
+        
         if re.search(rf"\b{keyword}\b", sql, re.IGNORECASE):
             raise ValueError(
                 f"Generated SQL contains a blocked keyword: '{keyword}'. "

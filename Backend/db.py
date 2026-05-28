@@ -6,15 +6,13 @@ fetching schema metadata and seeding the demo dataset.
 
 import logging
 import psycopg2
-import psycopg2.extras  # RealDictCursor
+import psycopg2.extras 
 from psycopg2 import pool
 
 from config import Config
 
 logger = logging.getLogger(__name__)
 
-# ─── Connection Pool ──────────────────────────────────────────────────────────
-# Initialised lazily on first use so import doesn't fail when Postgres is down
 _pool: psycopg2.pool.SimpleConnectionPool | None = None
 
 
@@ -48,7 +46,7 @@ def get_db_connection() -> psycopg2.extensions.connection:
     (typically in a finally block).
     """
     conn = _get_pool().getconn()
-    conn.autocommit = True          # read-only SELECTs don't need explicit commits
+    conn.autocommit = True          
     return conn
 
 
@@ -57,7 +55,6 @@ def close_db_connection(conn: psycopg2.extensions.connection) -> None:
     _get_pool().putconn(conn)
 
 
-# ─── Schema Introspection ─────────────────────────────────────────────────────
 
 def fetch_schema_info(conn: psycopg2.extensions.connection) -> list[dict]:
     """
@@ -137,8 +134,6 @@ def fetch_schema_info(conn: psycopg2.extensions.connection) -> list[dict]:
 
     return tables
 
-
-# ─── Demo Database Seeder ─────────────────────────────────────────────────────
 
 SEED_SQL = """
 -- ─── Schema ───────────────────────────────────────────────────────────────
