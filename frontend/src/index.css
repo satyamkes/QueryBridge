@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@theme {
+  --color-space-dark: #030014;
+  --color-space-deep: #0b081e;
+  --color-space-card: rgba(13, 11, 38, 0.45);
+  --color-neon-cyan: #00f0ff;
+  --color-neon-purple: #ab00ff;
+  --color-neon-blue: #3b82f6;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "Outfit", sans-serif;
+  --font-mono: "Fira Code", monospace;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-delayed: float-delayed 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
+  --animate-glow: glow 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0.5deg);
+  }
+}
+
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(-5px) rotate(-0.5deg);
+  }
+  50% {
+    transform: translateY(5px) rotate(0.5deg);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.15), 0 0 5px rgba(0, 240, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.35), 0 0 10px rgba(0, 240, 255, 0.2);
+  }
+}
+
+/* Custom Utilities for Glassmorphism & Neon Glowing */
+.glass-panel {
+  background: rgba(13, 11, 38, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-cyan {
+  background: rgba(13, 11, 38, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.08);
+}
+
+.glass-panel-purple {
+  background: rgba(13, 11, 38, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(171, 0, 255, 0.25);
+  box-shadow: 0 0 25px rgba(171, 0, 255, 0.08);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6), 0 0 2px rgba(0, 240, 255, 0.3);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 8px rgba(171, 0, 255, 0.6), 0 0 2px rgba(171, 0, 255, 0.3);
+}
+
+.text-glow-white {
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.glow-border-cyan:focus {
+  border-color: rgba(0, 240, 255, 0.65);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);
+}
+
+.glow-border-purple:focus {
+  border-color: rgba(171, 0, 255, 0.65);
+  box-shadow: 0 0 20px rgba(171, 0, 255, 0.25);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #030014;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.55);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+body {
+  background-color: #030014;
+  color: #ffffff;
+  font-family: "Outfit", sans-serif;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Futuristic grid mesh effect overlay */
+.grid-overlay {
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+}
