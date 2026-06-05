@@ -35,16 +35,16 @@ const History = ({ onReRun }) => {
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16">
       
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6 mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-theme-text/10 pb-6 mb-10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.1)]">
             <RiHistoryLine className="text-xl" />
           </div>
           <div>
-            <h2 className="font-display font-black text-3xl text-white tracking-wide">
+            <h2 className="font-display font-black text-3xl text-theme-text tracking-wide">
               AST COMPILATION LOGS
             </h2>
-            <p className="text-xs font-mono text-white/40 mt-1 uppercase tracking-wider">
+            <p className="text-xs font-mono text-theme-dim mt-1 uppercase tracking-wider">
               Review previously translated database transactions
             </p>
           </div>
@@ -66,11 +66,11 @@ const History = ({ onReRun }) => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-20 bg-white/2 border border-dashed border-white/10 rounded-2xl max-w-xl mx-auto"
+          className="text-center py-20 bg-theme-text/2 border border-dashed border-theme-text/10 rounded-2xl max-w-xl mx-auto"
         >
-          <RiHistoryLine className="text-5xl text-white/20 mx-auto mb-4" />
-          <h3 className="font-display font-bold text-lg text-white mb-2">No Records Found</h3>
-          <p className="text-xs text-white/45 max-w-sm mx-auto leading-relaxed">
+          <RiHistoryLine className="text-5xl text-theme-dim/50 mx-auto mb-4" />
+          <h3 className="font-display font-bold text-lg text-theme-text mb-2">No Records Found</h3>
+          <p className="text-xs text-theme-muted max-w-sm mx-auto leading-relaxed">
             Your query transaction records are currently empty. Return to the workspace terminal and generate SQL queries to populate this deck.
           </p>
         </motion.div>
@@ -85,11 +85,11 @@ const History = ({ onReRun }) => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 whileHover={{ y: -6, borderColor: 'rgba(0, 240, 255, 0.25)', boxShadow: '0 10px 25px rgba(0, 240, 255, 0.05)' }}
-                className="glass-panel rounded-xl p-5 border border-white/5 shadow-[0_5px_15px_rgba(0,0,0,0.3)] transition-all duration-300 flex flex-col justify-between"
+                className="glass-panel rounded-xl p-5 border border-theme-text/5 shadow-[0_5px_15px_rgba(0,0,0,0.3)] transition-all duration-300 flex flex-col justify-between"
               >
                 <div>
                   {/* Card Header metadata */}
-                  <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4 font-mono text-[9px] text-white/40">
+                  <div className="flex items-center justify-between border-b border-theme-text/5 pb-3 mb-4 font-mono text-[9px] text-theme-dim">
                     <span className="flex items-center gap-1">
                       <RiDatabaseLine className="text-neon-cyan" /> {item.database || 'PostgreSQL'}
                     </span>
@@ -98,17 +98,17 @@ const History = ({ onReRun }) => {
 
                   {/* Natural language statement */}
                   <div className="mb-4">
-                    <span className="font-mono text-[9px] text-white/30 block mb-1 uppercase tracking-wider">
+                    <span className="font-mono text-[9px] text-theme-dim block mb-1 uppercase tracking-wider">
                       English Query:
                     </span>
-                    <p className="text-sm font-semibold text-white/90 leading-snug">
+                    <p className="text-sm font-semibold text-theme-text leading-snug">
                       "{item.query}"
                     </p>
                   </div>
 
                   {/* SQL Preview block */}
-                  <div className="bg-[#02000c]/80 border border-white/5 rounded-lg p-3.5 mb-4 relative group">
-                    <span className="font-mono text-[8px] text-white/20 block mb-1 uppercase tracking-wider">
+                  <div className="bg-theme-code border border-theme-code-border rounded-lg p-3.5 mb-4 relative group">
+                    <span className="font-mono text-[8px] text-theme-dim block mb-1 uppercase tracking-wider">
                       Compiled SQL:
                     </span>
                     <pre className="text-xs font-mono text-neon-cyan/90 overflow-x-auto whitespace-pre leading-relaxed select-all pr-8 scrollbar-none max-h-24">
@@ -118,7 +118,7 @@ const History = ({ onReRun }) => {
                     {/* Copy action */}
                     <button
                       onClick={() => handleCopySql(item.id, item.sql)}
-                      className="absolute right-2 top-2 p-1.5 rounded bg-white/5 border border-white/10 hover:border-neon-cyan/50 text-[10px] text-white/60 hover:text-neon-cyan transition-all duration-200 cursor-pointer"
+                      className="absolute right-2 top-2 p-1.5 rounded bg-theme-text/5 border border-theme-text/10 hover:border-neon-cyan/50 text-[10px] text-theme-muted hover:text-neon-cyan transition-all duration-200 cursor-pointer"
                       title="Copy SQL Code"
                     >
                       {copiedId === item.id ? (
@@ -131,15 +131,15 @@ const History = ({ onReRun }) => {
                 </div>
 
                 {/* Card footer actions */}
-                <div className="flex items-center justify-between border-t border-white/5 pt-3.5 mt-2">
-                  <div className="font-mono text-[9px] text-white/30 uppercase">
-                    RESULTS: <strong className="text-white/60">{item.rowsCount} Rows</strong> | SPEED: <strong className="text-white/60">{item.latency}</strong>
+                <div className="flex items-center justify-between border-t border-theme-text/5 pt-3.5 mt-2">
+                  <div className="font-mono text-[9px] text-theme-dim uppercase">
+                    RESULTS: <strong className="text-theme-muted">{item.rowsCount} Rows</strong> | SPEED: <strong className="text-theme-muted">{item.latency}</strong>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDeleteItem(item.id)}
-                      className="p-2 rounded bg-white/5 border border-white/10 hover:border-red-500/40 text-white/50 hover:text-red-400 transition-colors duration-200 cursor-pointer"
+                      className="p-2 rounded bg-theme-text/5 border border-theme-text/10 hover:border-red-500/40 text-theme-muted hover:text-red-400 transition-colors duration-200 cursor-pointer"
                       title="Delete log record"
                     >
                       <RiDeleteBin5Line className="text-xs" />

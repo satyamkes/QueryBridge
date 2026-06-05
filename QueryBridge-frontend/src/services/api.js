@@ -1,3 +1,4 @@
+// QueryBridge AI SQL translation services and mock simulation config
 import axios from 'axios';
 
 // Load initial API base URL from localStorage or fallback to standard Flask local development port
@@ -10,6 +11,43 @@ export const setApiUrl = (url) => {
   apiBaseUrl = url;
   localStorage.setItem('QUERYBRIDGE_API_URL', url);
 };
+
+// Custom tables persistence (stored in localStorage) -------------------------------------------------
+const CUSTOM_TABLES_KEY = 'QUERYBRIDGE_CUSTOM_TABLES';
+
+const loadCustomTables = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_TABLES_KEY) || '[]');
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveCustomTables = (tables) => {
+  localStorage.setItem(CUSTOM_TABLES_KEY, JSON.stringify(tables || []));
+};
+
+export const getCustomTables = () => loadCustomTables();
+
+export const addCustomTable = (table) => {
+  // table: { name: string, columns: string[], rows?: Array<object> }
+  if (!table || !table.name || !Array.isArray(table.columns)) return false;
+  const tables = loadCustomTables();
+  const exists = tables.find(t => t.name.toLowerCase() === table.name.toLowerCase());
+  if (exists) return false;
+  tables.push({ name: table.name, columns: table.columns, rows: table.rows || [] });
+  saveCustomTables(tables);
+  return true;
+};
+
+export const removeCustomTable = (tableName) => {
+  if (!tableName) return false;
+  const tables = loadCustomTables();
+  const filtered = tables.filter(t => t.name.toLowerCase() !== tableName.toLowerCase());
+  saveCustomTables(filtered);
+  return filtered.length !== tables.length;
+};
+
 
 // Create axios instance
 const api = axios.create({
@@ -82,6 +120,21 @@ const MOCK_QUERIES = [
 // Helper to find match in mock responses
 const findMockMatch = (queryText) => {
   const normalized = queryText.toLowerCase();
+  // Check user-defined custom tables first
+  try {
+    const customTables = loadCustomTables();
+    for (const tbl of customTables) {
+      const name = tbl.name.toLowerCase();
+      if (normalized.includes(name) || (Array.isArray(tbl.columns) && tbl.columns.some(c => normalized.includes(c.toLowerCase())))) {
+        const cols = Array.isArray(tbl.columns) && tbl.columns.length ? tbl.columns : ['*'];
+        const sql = `SELECT ${cols.join(', ')}\nFROM ${tbl.name} \nLIMIT 10;`;
+        const rows = (Array.isArray(tbl.rows) && tbl.rows.length) ? tbl.rows : [];
+        return { keywords: [name, ...(tbl.columns || [])], sql, columns: cols, rows };
+      }
+    }
+  } catch (e) {
+    // ignore and continue to built-in mocks
+  }
   for (const mock of MOCK_QUERIES) {
     if (mock.keywords.some(keyword => normalized.includes(keyword))) {
       return mock;
@@ -99,6 +152,36 @@ const findMockMatch = (queryText) => {
   };
 };
 
+export const isQueryRelevant = (queryText) => {
+  const normalized = queryText.trim().toLowerCase();
+  if (normalized.length < 3) return false;
+
+  // List of terms that indicate relevance to our database schema
+  const schemaTerms = [
+    'user', 'member', 'customer', 'people', 'state', 'california', 'ca',
+    'student', 'students',
+    'product', 'item', 'price', 'category',
+    'order', 'purchase', 'transaction', 'status', 'processing',
+    'revenue', 'sales', 'earn', 'month', 'year', '2025',
+    'count', 'register', 'new', 'average', 'avg'
+  ];
+
+  if (schemaTerms.some(term => normalized.includes(term))) return true;
+
+  // Also consider any user-added custom table names or columns relevant
+  try {
+    const custom = loadCustomTables();
+    for (const tbl of custom) {
+      if (normalized.includes(tbl.name.toLowerCase())) return true;
+      if (Array.isArray(tbl.columns) && tbl.columns.some(c => normalized.includes(c.toLowerCase()))) return true;
+    }
+  } catch (e) {
+    // ignore errors and fall through
+  }
+
+  return false;
+};
+
 /**
  * Sends a natural language query to the AI SQL generation bridge.
  * If backend is offline, simulates backend execution with high-fidelity response.
@@ -110,8 +193,27 @@ export const generateSqlQuery = async (prompt, forceSimulation = false) => {
     return simulateApiCall(prompt);
   }
 
+  // Pre-validate relevance before making network request to keep it snappy
+  if (!isQueryRelevant(prompt)) {
+    return simulateApiCall(prompt); // Will resolve to the invalid result
+  }
+
   try {
     const response = await api.post('/generate', { prompt });
+    if (response.data.error || response.data.success === false) {
+      return {
+        success: false,
+        error: response.data.error || "Failed to generate SQL query.",
+        query: prompt,
+        sql: "",
+        columns: [],
+        rows: [],
+        latency: response.data.latency || '120ms',
+        tokensUsed: response.data.tokensUsed || 0,
+        database: response.data.database || 'PostgreSQL (Ollama)',
+        mode: 'live'
+      };
+    }
     return {
       success: true,
       query: prompt,
@@ -132,23 +234,39 @@ export const generateSqlQuery = async (prompt, forceSimulation = false) => {
 
 const simulateApiCall = (prompt) => {
   return new Promise((resolve) => {
-    const mock = findMockMatch(prompt);
+    const isRelevant = isQueryRelevant(prompt);
     
     // Simulate typical network and LLM inference latency (800ms - 2500ms)
     const latencyMs = Math.floor(Math.random() * 1200) + 1000;
     
     setTimeout(() => {
-      resolve({
-        success: true,
-        query: prompt,
-        sql: mock.sql,
-        columns: mock.columns,
-        rows: mock.rows,
-        latency: `${latencyMs}ms`,
-        tokensUsed: Math.floor(Math.random() * 200) + 250,
-        database: 'PostgreSQL 16 (Ollama Llama-3)',
-        mode: 'simulated'
-      });
+      if (!isRelevant) {
+        resolve({
+          success: false,
+          error: "No matching database tables or fields (like 'users', 'products', 'orders', or 'revenue') could be resolved from your query. Please refer to the Target Schema Info sidebar for helper fields.",
+          query: prompt,
+          sql: "",
+          columns: [],
+          rows: [],
+          latency: `${latencyMs}ms`,
+          tokensUsed: 12,
+          database: 'PostgreSQL 16 (Ollama Llama-3)',
+          mode: 'simulated'
+        });
+      } else {
+        const mock = findMockMatch(prompt);
+        resolve({
+          success: true,
+          query: prompt,
+          sql: mock.sql,
+          columns: mock.columns,
+          rows: mock.rows,
+          latency: `${latencyMs}ms`,
+          tokensUsed: Math.floor(Math.random() * 200) + 250,
+          database: 'PostgreSQL 16 (Ollama Llama-3)',
+          mode: 'simulated'
+        });
+      }
     }, latencyMs);
   });
 };

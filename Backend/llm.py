@@ -35,6 +35,8 @@ Tables in the PostgreSQL database:
 4. order_items (item_id PK SERIAL, order_id FK→orders.order_id,
                 product_id FK→products.product_id,
                 quantity INTEGER, total_price NUMERIC)
+5. student (student_id PK, name, math INT, science INT, english INT,
+            history INT, hindi INT, average NUMERIC)
 """
 
 SYSTEM_PROMPT = f"""You are QueryBridge, an expert PostgreSQL query generator.

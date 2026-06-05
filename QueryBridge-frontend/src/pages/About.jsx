@@ -38,16 +38,16 @@ const About = () => {
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16">
       
       {/* Title */}
-      <div className="text-center mb-16 border-b border-white/5 pb-8">
+      <div className="text-center mb-16 border-b border-theme-text/5 pb-8">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="font-display font-black text-4xl text-white tracking-wide">
+          <h2 className="font-display font-black text-4xl text-theme-text tracking-wide">
             ARCHITECTURAL SPECIFICATIONS
           </h2>
-          <p className="text-xs font-mono text-white/40 mt-1 uppercase tracking-wider">
+          <p className="text-xs font-mono text-theme-dim mt-1 uppercase tracking-wider">
             Inside the AI-Powered natural language compilation grid
           </p>
         </motion.div>
@@ -63,24 +63,24 @@ const About = () => {
         >
           <div className="flex items-center gap-2">
             <RiCodeBoxLine className="text-xl text-neon-cyan" />
-            <h3 className="font-display font-bold text-sm text-white tracking-wider uppercase">
+            <h3 className="font-display font-bold text-sm text-theme-text tracking-wider uppercase">
               The Mission of QueryBridge
             </h3>
           </div>
           
-          <p className="text-white/70 text-sm leading-relaxed font-sans">
+          <p className="text-theme-muted text-sm leading-relaxed font-sans">
             QueryBridge is an experimental prototype designed to bridge the friction gap between human expression and complex structured query languages. In traditional environments, extracting records requires writing syntax-perfect SQL code. QueryBridge converts colloquial sentences directly into optimized SQL scripts in milliseconds.
           </p>
           
-          <p className="text-white/70 text-sm leading-relaxed font-sans">
+          <p className="text-theme-muted text-sm leading-relaxed font-sans">
             Using zero-latency semantic translation, the core AI reasons about database table structures, identifies primary and foreign keys, writes complex joins, aggregates metrics, and executes the results securely. All operations are presented within a futuristic dashboard layout, allowing engineers and business teams to co-operate seamlessly.
           </p>
 
-          <div className="p-4 bg-white/3 border border-white/5 rounded-xl">
-            <span className="font-mono text-[9px] text-white/30 uppercase tracking-widest block mb-1">
+          <div className="p-4 bg-theme-text/5 border border-theme-text/5 rounded-xl">
+            <span className="font-mono text-[9px] text-theme-dim uppercase tracking-widest block mb-1">
               Engine Feature List
             </span>
-            <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono text-[10px] text-white/60">
+            <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono text-[10px] text-theme-muted">
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan" /> Offline SQL Compiling
               </li>
@@ -121,12 +121,12 @@ const About = () => {
             <circle cx="340" cy="150" r="16" fill="#030014" stroke="#38bdf8" strokeWidth="2.5" />
 
             {/* Text labels */}
-            <text x="60" y="125" fill="#f8fafc" fontSize="9" fontFamily="Orbitron" textAnchor="middle" fontWeight="bold">REACT UI</text>
-            <text x="200" y="115" fill="#f8fafc" fontSize="10" fontFamily="Orbitron" textAnchor="middle" fontWeight="bold">AI COMPILER</text>
-            <text x="340" y="125" fill="#f8fafc" fontSize="9" fontFamily="Orbitron" textAnchor="middle" fontWeight="bold">DATABASE</text>
+            <text x="60" y="125" fill="var(--text-primary)" fontSize="9" fontFamily="Orbitron" textAnchor="middle" fontWeight="bold">REACT UI</text>
+            <text x="200" y="115" fill="var(--text-primary)" fontSize="10" fontFamily="Orbitron" textAnchor="middle" fontWeight="bold">AI COMPILER</text>
+            <text x="340" y="125" fill="var(--text-primary)" fontSize="9" fontFamily="Orbitron" textAnchor="middle" fontWeight="bold">DATABASE</text>
           </svg>
           
-          <div className="absolute bottom-5 font-mono text-[9px] text-white/30 text-center uppercase tracking-widest leading-relaxed">
+          <div className="absolute bottom-5 font-mono text-[9px] text-theme-dim text-center uppercase tracking-widest leading-relaxed">
             SYSTEM NODE FLOW:<br />
             <span className="text-neon-cyan font-bold">CLIENT</span> &gt;&gt; <span className="text-neon-purple font-bold">INFERENCE ENGINE</span> &gt;&gt; <span className="text-[#38bdf8] font-bold">POSTGRES TABLE SET</span>
           </div>
@@ -134,7 +134,7 @@ const About = () => {
       </div>
 
       {/* Grid of tech cards */}
-      <h3 className="font-display font-bold text-sm text-white tracking-widest uppercase text-left mb-6">
+      <h3 className="font-display font-bold text-sm text-theme-text tracking-widest uppercase text-left mb-6">
         Technology Stack Details
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -154,16 +154,16 @@ const About = () => {
                   <Icon />
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-xs text-white uppercase tracking-wide">
+                  <h4 className="font-display font-bold text-xs text-theme-text uppercase tracking-wide">
                     {tech.name}
                   </h4>
-                  <span className="font-mono text-[9px] text-white/40 uppercase">
+                  <span className="font-mono text-[9px] text-theme-dim uppercase">
                     {tech.role}
                   </span>
                 </div>
               </div>
               
-              <p className="text-white/60 text-[11px] leading-relaxed font-sans text-left">
+              <p className="text-theme-muted text-[11px] leading-relaxed font-sans text-left">
                 {tech.desc}
               </p>
             </motion.div>
