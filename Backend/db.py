@@ -103,12 +103,8 @@ def fetch_schema_info(conn: psycopg2.extensions.connection) -> list[dict]:
     for table in table_names:
         # Row count estimate (fast; exact count is expensive on large tables)
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT reltuples::bigint FROM pg_class WHERE relname = %s",
-                (table,),
-            )
-            row = cur.fetchone()
-            count = int(row[0]) if row else 0
+            cur.execute(f"SELECT COUNT(*) FROM {table}")
+            count = cur.fetchone()[0]
 
         # Column list with PK/FK annotations
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -184,6 +180,22 @@ CREATE TABLE IF NOT EXISTS order_items (
     total_price NUMERIC(12, 2) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS app_users (
+    id            SERIAL PRIMARY KEY,
+    username      VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role          VARCHAR(20) NOT NULL DEFAULT 'user',
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id            SERIAL PRIMARY KEY,
+    user_id       INTEGER REFERENCES app_users(id),
+    action        VARCHAR(50) NOT NULL,
+    query_executed TEXT NOT NULL,
+    timestamp     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ─── Seed Data ────────────────────────────────────────────────────────────
 
 -- Users
@@ -245,6 +257,24 @@ def seed_database() -> None:
             conn.autocommit = False
             with conn.cursor() as cur:
                 cur.execute(SEED_SQL)
+                
+                # Insert default users
+                try:
+                    import bcrypt
+                    admin_pw = bcrypt.hashpw(b"ad******", bcrypt.gensalt()).decode('utf-8')
+                    user_pw = bcrypt.hashpw(b"us********", bcrypt.gensalt()).decode('utf-8')
+                    
+                    cur.execute(
+                        "INSERT INTO app_users (username, password_hash, role) VALUES (%s, %s, %s) ON CONFLICT (username) DO NOTHING",
+                        ("ad***", admin_pw, "admin")
+                    )
+                    cur.execute(
+                        "INSERT INTO app_users (username, password_hash, role) VALUES (%s, %s, %s) ON CONFLICT (username) DO NOTHING",
+                        ("u***", user_pw, "user")
+                    )
+                except ImportError:
+                    logger.warning("bcrypt not installed, skipping app_users seed data")
+                    
             conn.commit()
             logger.info("Database seeded successfully.")
         except Exception as exc:

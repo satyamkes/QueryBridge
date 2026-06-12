@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiHome5Line, RiHistoryLine, RiInformationLine, RiSettings4Line, RiCpuLine, RiSunLine, RiMoonLine, RiDatabase2Line } from 'react-icons/ri';
+import { RiHome5Line, RiHistoryLine, RiInformationLine, RiSettings4Line, RiCpuLine, RiSunLine, RiMoonLine, RiDatabase2Line, RiLogoutBoxRLine, RiUserAddLine } from 'react-icons/ri';
 import logo from '../assets/logo.svg';
-import { getApiUrl, setApiUrl, getCustomTables, addCustomTable, removeCustomTable } from '../services/api';
+import { getApiUrl, setApiUrl, getCustomTables, addCustomTable, removeCustomTable, registerUser } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme }) => {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [apiUrl, setApiUrlState] = useState(getApiUrl());
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const { user, logout, isAdmin } = useAuth();
 
   const menuItems = [
     { id: 'home', label: 'Home', icon: RiHome5Line },
@@ -92,6 +95,13 @@ const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme }) => {
 
           {/* Right Action Widgets */}
           <div className="flex items-center gap-4">
+            {user && (
+              <div className="hidden lg:flex flex-col items-end mr-2">
+                <span className="text-xs font-bold text-theme-text">{user.username}</span>
+                <span className={`text-[9px] font-mono px-1 rounded ${isAdmin ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'}`}>{user.role.toUpperCase()}</span>
+              </div>
+            )}
+            
             {/* System Status - Hidden on extra small screens */}
             <div className="hidden sm:flex items-center gap-2 bg-space-deep border border-neon-cyan/20 rounded-lg px-3 py-1.5 font-mono text-[10px] tracking-wide text-neon-cyan shadow-[0_0_10px_rgba(0,240,255,0.05)] animate-pulse-slow">
               <RiCpuLine className="text-xs" />
@@ -129,6 +139,30 @@ const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme }) => {
               title="Manage Custom Tables"
             >
               <RiDatabase2Line className="text-lg" />
+            </motion.button>
+            
+            {/* Add Admin Button (Admin only) */}
+            {isAdmin && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsAddAdminOpen(true)}
+                className="p-2.5 rounded-lg bg-theme-text/5 hover:bg-neon-cyan/10 border border-theme-text/10 hover:border-neon-cyan/40 text-theme-text/80 hover:text-neon-cyan transition-all duration-300 shadow-[0_0_10px_rgba(0,240,255,0.05)] cursor-pointer"
+                title="Create New Admin Account"
+              >
+                <RiUserAddLine className="text-lg" />
+              </motion.button>
+            )}
+
+            {/* Logout Button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={logout}
+              className="p-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 transition-all duration-300 cursor-pointer"
+              title="Logout"
+            >
+              <RiLogoutBoxRLine className="text-lg" />
             </motion.button>
           </div>
         </div>
@@ -264,6 +298,52 @@ const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme }) => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Add Admin Drawer */}
+      <AnimatePresence>
+        {isAddAdminOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddAdminOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 pointer-events-auto"
+            />
+
+            {/* Panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-space-deep border-l border-neon-cyan/20 p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] z-50 overflow-y-auto flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between border-b border-theme-text/10 pb-4 mb-6">
+                  <h3 className="font-display font-bold text-lg text-theme-text tracking-wide uppercase">
+                    Add New Admin
+                  </h3>
+                  <button 
+                    onClick={() => setIsAddAdminOpen(false)}
+                    className="text-theme-muted hover:text-theme-text text-sm cursor-pointer"
+                  >
+                    CLOSE [ESC]
+                  </button>
+                </div>
+
+                <AddAdminPanel onClose={() => setIsAddAdminOpen(false)} />
+              </div>
+
+              <div className="border-t border-theme-text/5 pt-6 font-mono text-[9px] text-theme-dim space-y-1">
+                <div>SECURITY ACCESS: ADMIN LEVEL</div>
+                <div>PROTOCOL: SECURE REGISTER</div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 };
@@ -345,6 +425,114 @@ const CustomTablesPanel = () => {
           ))}
         </ul>
       </div>
+    </div>
+  );
+};
+
+const AddAdminPanel = ({ onClose }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleRegisterAdmin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (username.trim().length < 3) {
+      setError('Username must be at least 3 characters.');
+      return;
+    }
+    if (password.trim().length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data = await registerUser(username.trim(), password.trim(), 'admin');
+      if (data.status === 'ok') {
+        setSuccess('Admin account created successfully!');
+        setUsername('');
+        setPassword('');
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      } else {
+        setError(data.message || 'Failed to create admin account.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Something went wrong.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-[11px] font-mono text-theme-dim leading-relaxed">
+        Register a new administrative account. Admin accounts are permitted to fetch data (SELECT) and edit data (INSERT, UPDATE), but cannot perform DELETE, DROP, or TRUNCATE operations.
+      </p>
+
+      <form onSubmit={handleRegisterAdmin} className="space-y-4">
+        <div>
+          <label className="block font-mono text-[11px] text-theme-muted mb-2 uppercase">Username</label>
+          <input 
+            type="text"
+            value={username} 
+            onChange={(e) => setUsername(e.target.value)} 
+            placeholder="e.g. admin_alex"
+            className="w-full bg-theme-input border border-theme-input-border rounded-lg p-3 text-sm text-theme-text focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan/30" 
+            required 
+            autoComplete="new-username"
+          />
+        </div>
+        <div>
+          <label className="block font-mono text-[11px] text-theme-muted mb-2 uppercase">Password</label>
+          <input 
+            type="password"
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            placeholder="Min 6 characters"
+            className="w-full bg-theme-input border border-theme-input-border rounded-lg p-3 text-sm text-theme-text focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan/30" 
+            required 
+            autoComplete="new-password"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          disabled={isLoading}
+          className="w-full bg-gradient-to-r from-neon-cyan to-neon-blue text-black font-display font-bold text-xs py-3 rounded-lg hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {isLoading ? 'CREATING ADMIN ACCOUNT...' : 'REGISTER ADMIN ACCOUNT'}
+        </button>
+      </form>
+
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono"
+          >
+            ✗ {error}
+          </motion.div>
+        )}
+        {success && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="p-3 rounded-lg bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan text-xs font-mono"
+          >
+            ✓ {success}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

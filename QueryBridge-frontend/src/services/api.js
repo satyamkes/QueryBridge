@@ -1,8 +1,13 @@
 // QueryBridge AI SQL translation services and mock simulation config
 import axios from 'axios';
 
-// Load initial API base URL from localStorage or fallback to standard Flask local development port
-const DEFAULT_API_URL = 'http://localhost:5000/api';
+// Load initial API base URL — use relative path so requests go through the Vite proxy (same-origin, no CORS)
+const DEFAULT_API_URL = '/api';
+// Clear any stale absolute URL from localStorage that would bypass the proxy
+const storedUrl = localStorage.getItem('QUERYBRIDGE_API_URL');
+if (storedUrl && (storedUrl.includes('localhost') || storedUrl.includes('127.0.0.1'))) {
+  localStorage.removeItem('QUERYBRIDGE_API_URL');
+}
 let apiBaseUrl = localStorage.getItem('QUERYBRIDGE_API_URL') || DEFAULT_API_URL;
 
 export const getApiUrl = () => apiBaseUrl;
@@ -51,12 +56,50 @@ export const removeCustomTable = (tableName) => {
 
 // Create axios instance
 const api = axios.create({
-  baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // 15 seconds
+  timeout: 30000,
 });
+
+// Request interceptor to attach auth token and dynamic base URL
+api.interceptors.request.use((config) => {
+  config.baseURL = apiBaseUrl;
+  const token = localStorage.getItem('QB_ACCESS_TOKEN');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor for token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refreshToken = localStorage.getItem('QB_REFRESH_TOKEN');
+      if (refreshToken) {
+        try {
+          const res = await axios.post(`${apiBaseUrl}/refresh`, { refresh_token: refreshToken });
+          if (res.data.status === 'ok' && res.data.access_token) {
+            localStorage.setItem('QB_ACCESS_TOKEN', res.data.access_token);
+            localStorage.setItem('QB_REFRESH_TOKEN', res.data.refresh_token);
+            originalRequest.headers.Authorization = `Bearer ${res.data.access_token}`;
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          localStorage.removeItem('QB_USER');
+          localStorage.removeItem('QB_ACCESS_TOKEN');
+          localStorage.removeItem('QB_REFRESH_TOKEN');
+          window.location.reload();
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // High-fidelity Mock responses for demonstration and offline mode
 const MOCK_QUERIES = [
@@ -200,20 +243,36 @@ export const generateSqlQuery = async (prompt, forceSimulation = false) => {
 
   try {
     const response = await api.post('/generate', { prompt });
-    if (response.data.error || response.data.success === false) {
+    if (response.data.status === 'error') {
       return {
         success: false,
-        error: response.data.error || "Failed to generate SQL query.",
+        error: response.data.message || "Failed to generate SQL query.",
         query: prompt,
         sql: "",
         columns: [],
         rows: [],
-        latency: response.data.latency || '120ms',
-        tokensUsed: response.data.tokensUsed || 0,
-        database: response.data.database || 'PostgreSQL (Ollama)',
+        latency: '120ms',
+        tokensUsed: 0,
+        database: 'PostgreSQL (Ollama)',
         mode: 'live'
       };
     }
+    
+    // Check if confirmation is required (admin destructive)
+    if (response.data.requires_confirmation) {
+      return {
+        success: true,
+        requires_confirmation: true,
+        action_type: response.data.action_type,
+        query: prompt,
+        sql: response.data.sql,
+        latency: response.data.latency,
+        tokensUsed: response.data.tokensUsed,
+        database: response.data.database,
+        mode: 'live'
+      };
+    }
+
     return {
       success: true,
       query: prompt,
@@ -269,4 +328,26 @@ const simulateApiCall = (prompt) => {
       }
     }, latencyMs);
   });
+};
+
+// ─── Auth API Functions ──────────────────────────────────────────────────
+
+export const loginUser = async (username, password) => {
+  const response = await api.post('/login', { username, password });
+  return response.data;
+};
+
+export const registerUser = async (username, password, role = 'user') => {
+  const response = await api.post('/register', { username, password, role });
+  return response.data;
+};
+
+export const executeConfirmedSql = async (sql) => {
+  const response = await api.post('/execute', { sql });
+  return response.data;
+};
+
+export const fetchAuditLogs = async () => {
+  const response = await api.get('/audit-logs');
+  return response.data;
 };

@@ -18,8 +18,11 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 
-    _cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5174,http://localhost:3000")
-    CORS_ORIGINS = [o.strip() for o in _cors_raw.split(",")]
+    JWT_ACCESS_EXPIRY = int(os.getenv("JWT_ACCESS_EXPIRY", 15))  # minutes
+    JWT_REFRESH_EXPIRY = int(os.getenv("JWT_REFRESH_EXPIRY", 10080))  # 7 days in minutes
+
+    _cors_raw = os.getenv("CORS_ORIGINS", "*")
+    CORS_ORIGINS = [o.strip() for o in _cors_raw.split(",")] if _cors_raw != "*" else "*"
 
     
     PG_HOST     = os.getenv("PG_HOST",     "localhost")
@@ -45,3 +48,9 @@ class Config:
         "DROP", "DELETE", "TRUNCATE", "ALTER",
         "INSERT", "UPDATE", "CREATE", "GRANT", "REVOKE",
     ]
+
+    # Keywords that only admin role can execute
+    ADMIN_ONLY_KEYWORDS = ["DROP", "DELETE", "TRUNCATE", "ALTER", "INSERT", "UPDATE", "CREATE", "GRANT", "REVOKE"]
+
+    # Keywords that admins are strictly prohibited from executing
+    BLOCKED_ADMIN_KEYWORDS = ["DELETE", "DROP", "TRUNCATE"]

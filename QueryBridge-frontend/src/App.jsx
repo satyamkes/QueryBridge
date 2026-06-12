@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import FloatingBackground from './components/FloatingBackground';
 import Home from './pages/Home';
 import History from './pages/History';
 import About from './pages/About';
+import Login from './pages/Login';
 import { generateSqlQuery } from './services/api';
 
 const App = () => {
+  const { isAuthenticated, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('home');
   const [prompt, setPrompt] = useState('');
   const [queryResult, setQueryResult] = useState(null);
@@ -95,6 +98,20 @@ const App = () => {
         );
     }
   };
+
+  // Show loading spinner while auth state is being restored
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#030014]">
+        <div className="w-8 h-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   return (
     <div className="relative min-h-screen grid-overlay text-theme-text transition-colors duration-300">

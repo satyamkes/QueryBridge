@@ -4,6 +4,7 @@ import InputBox from '../components/InputBox';
 import QueryCard from '../components/QueryCard';
 import ResultTable from '../components/ResultTable';
 import Loader from '../components/Loader';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { generateSqlQuery } from '../services/api';
 import { RiDatabaseLine, RiCpuLine, RiNodeTree, RiBrainLine, RiMicLine, RiDownloadLine, RiFlashlightLine, RiSearchEyeLine, RiAlertLine } from 'react-icons/ri';
 
@@ -269,7 +270,7 @@ const Home = ({ prompt, setPrompt, queryResult, setQueryResult, isPending, setIs
               </motion.div>
             )}
 
-            {queryResult && queryResult.success && (
+            {queryResult && queryResult.success && !queryResult.requires_confirmation && (
               <motion.div
                 key="results"
                 initial={{ opacity: 0, y: 20 }}
@@ -281,6 +282,18 @@ const Home = ({ prompt, setPrompt, queryResult, setQueryResult, isPending, setIs
                 <div ref={resultsTableRef} className="scroll-mt-10" />
                 {showTable && <ResultTable queryResult={queryResult} />}
               </motion.div>
+            )}
+
+            {queryResult && queryResult.requires_confirmation && (
+               <ConfirmationModal 
+                 isOpen={true}
+                 onClose={() => setQueryResult(null)}
+                 sql={queryResult.sql}
+                 actionType={queryResult.action_type}
+                 onExecuted={(data) => {
+                   // Refresh or handle post execution
+                 }}
+               />
             )}
 
             {queryResult && !queryResult.success && (
