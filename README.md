@@ -26,7 +26,7 @@ If the backend database or AI service is offline, QueryBridge transitions seamle
 
 ## 🚀 Key Features
 
-*   **🧠 Intelligent Prompt Translation:** Instantly converts natural language questions (e.g., *"Show top 5 sold products in 2025"*) into optimized ANSI SQL queries.
+*   **🧠 Intelligent Prompt Translation:** Instantly converts natural language questions (e.g., *"Show top 5 CSE students by CGPA"*) into optimized ANSI SQL queries.
 *   **🎙️ Speech-to-Text Input Protocol:** Directly speak your questions into the terminal via integrated speech recognition.
 *   **🖥️ Real-time AST Compilation Console:** Visualizes compiling and parsing stages with live, terminal-styled logs.
 *   **📊 Relational Output Buffer:** Renders tabular results with column highlighting, formatting of statuses/emails, and **instant CSV export**.
@@ -84,15 +84,17 @@ The application is calibrated to translate queries matching the following defaul
 | Table Name | Description | Column Details |
 | :--- | :--- | :--- |
 | **`users`** | Customer records | `id (PK)`, `name`, `email`, `state`, `created_at` |
-| **`products`** | Merchandise catalogs | `product_id (PK)`, `name`, `price`, `category` |
-| **`orders`** | Purchase history transactions | `order_id (PK)`, `user_id (FK)`, `order_date`, `total_amount`, `status` |
-| **`order_items`** | Items in each order | `item_id (PK)`, `order_id (FK)`, `product_id (FK)`, `quantity`, `total_price` |
+| **`institutes`** | Institute basics | `institute_id (PK)`, `name`, `city` |
+| **`departments`** | Branches/Departments | `department_id (PK)`, `name`, `code` |
+| **`professors`** | Faculty members | `professor_id (PK)`, `name`, `department_id (FK)`, `designation` |
+| **`students`** | Enrolled Students | `student_id (PK)`, `roll_no`, `name`, `cgpa` |
+| **`courses`** | Academic courses | `course_id (PK)`, `course_code`, `title` |
 
 ### Example Queries to Try:
-*   *"Show all users from California"*
-*   *"Find top 10 products sold in 2025"*
-*   *"Get average revenue per month"*
-*   *"List orders with status processing"*
+*   *"Show all professors in the CSE department"*
+*   *"Find top 10 students by CGPA in ME branch"*
+*   *"Get average attendance for CS301 section A"*
+*   *"List exams scheduled for next month"*
 
 ---
 

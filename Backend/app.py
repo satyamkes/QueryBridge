@@ -157,7 +157,7 @@ def generate():
     Core translation endpoint.
 
     Request body (JSON):
-        { "prompt": "Show all users from California" }
+        { "prompt": "Show CSE students from NIT Agartala with CGPA above 8.5" }
 
     Response body (JSON):
         {

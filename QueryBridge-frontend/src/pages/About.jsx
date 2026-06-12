@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { RiCpuLine, RiDatabaseLine, RiServerLine, RiCodeBoxLine, RiDashboard3Line } from 'react-icons/ri';
 

@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import { RiSparklingLine, RiDatabase2Line, RiArrowRightUpLine, RiMicLine, RiMicFill } from 'react-icons/ri';
 
 const SUGGESTIONS = [
-  "Show all users from California",
-  "Find top 10 products sold in 2025",
-  "Get average revenue per month",
-  "List orders with status processing"
+  "Show CSE students with CGPA above 8.5",
+  "List professors and specializations by branch",
+  "Show exam results for fourth year CSE students",
+  "Compare student count across all branches"
 ];
 
 const InputBox = ({ value, onChange, onSubmit, isPending }) => {
@@ -145,7 +145,7 @@ const InputBox = ({ value, onChange, onSubmit, isPending }) => {
               ? "Listening... Speak your query clearly now." 
               : isAutoSubmitting 
               ? "Preparing voice query translation..." 
-              : "Ask a question about your database (e.g. 'Show all users from California')..."
+              : "Ask about NIT Agartala data (e.g. 'Show CSE students with CGPA above 8.5')..."
           }
           rows={3}
           className={`w-full border rounded-xl py-4 pl-4 pr-32 text-theme-text text-base font-medium placeholder-theme-dim focus:outline-none focus:ring-1 transition-all duration-350 resize-none font-sans ${

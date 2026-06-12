@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import FloatingBackground from './components/FloatingBackground';
+import Auth from './pages/Auth';
 import Home from './pages/Home';
 import History from './pages/History';
 import About from './pages/About';
-import { generateSqlQuery } from './services/api';
+import { fetchCurrentUser, generateSqlQuery, getStoredAuth, logoutUser } from './services/api';
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState('home');
   const [prompt, setPrompt] = useState('');
   const [queryResult, setQueryResult] = useState(null);
   const [isPending, setIsPending] = useState(false);
+  const [authUser, setAuthUser] = useState(() => getStoredAuth()?.user || null);
+  const [isAuthChecking, setIsAuthChecking] = useState(Boolean(getStoredAuth()));
 
   // Initialize theme state from localStorage or system preference
   const [theme, setTheme] = useState(() => {
@@ -37,6 +40,30 @@ const App = () => {
       root.classList.remove('light');
     }
   }, [theme]);
+
+  useEffect(() => {
+    const auth = getStoredAuth();
+    if (!auth) return;
+
+    let isMounted = true;
+    fetchCurrentUser().then((result) => {
+      if (!isMounted) return;
+      setAuthUser(result.success ? result.user : null);
+      setIsAuthChecking(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logoutUser();
+    setAuthUser(null);
+    setCurrentPage('home');
+    setPrompt('');
+    setQueryResult(null);
+  };
 
   // Reruns a historical query: updates text input, navigates back home, and executes
   const handleReRun = async (queryText) => {
@@ -96,6 +123,28 @@ const App = () => {
     }
   };
 
+  if (isAuthChecking) {
+    return (
+      <div className="relative min-h-screen grid-overlay text-theme-text transition-colors duration-300 flex items-center justify-center">
+        <FloatingBackground theme={theme} />
+        <div className="relative z-10 glass-panel-cyan rounded-2xl px-8 py-6 text-center">
+          <p className="font-mono text-[11px] uppercase tracking-widest text-neon-cyan">
+            Validating secure session...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <>
+        <FloatingBackground theme={theme} />
+        <Auth onAuthenticated={setAuthUser} theme={theme} toggleTheme={toggleTheme} />
+      </>
+    );
+  }
+
   return (
     <div className="relative min-h-screen grid-overlay text-theme-text transition-colors duration-300">
       {/* Dynamic Star Canvas Background */}
@@ -107,6 +156,8 @@ const App = () => {
         setCurrentPage={setCurrentPage} 
         theme={theme} 
         toggleTheme={toggleTheme} 
+        user={authUser}
+        onLogout={handleLogout}
       />
 
       {/* Page Content Shell */}

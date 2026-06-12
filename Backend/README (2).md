@@ -147,14 +147,14 @@ and returns the results.
 
 **Request body**
 ```json
-{ "prompt": "Show all users from California" }
+{ "prompt": "Show all professors in the CSE department" }
 ```
 
 **Response 200**
 ```json
 {
   "status":     "ok",
-  "sql":        "SELECT id, name, email, state, created_at\nFROM users\nWHERE state = 'CA'\nORDER BY created_at DESC\nLIMIT 100;",
+  "sql":        "SELECT name, designation, email\nFROM professors\nJOIN departments ON departments.department_id = professors.department_id\nWHERE departments.code = 'CSE'\nORDER BY name ASC\nLIMIT 100;",
   "columns":    ["id", "name", "email", "state", "created_at"],
   "rows":       [{ "id": 1, "name": "Elena Rostova", ... }],
   "latency":    "312ms",
@@ -177,16 +177,18 @@ and returns the results.
 
 ```sql
 users       (id PK, name, email, state CHAR(2), created_at DATE)
-products    (product_id PK, name, price NUMERIC, category)
-orders      (order_id PK, user_id FK, order_date DATE, total_amount, status)
-order_items (item_id PK, order_id FK, product_id FK, quantity, total_price)
+institutes  (institute_id PK, name, city)
+departments (department_id PK, institute_id FK, name, code)
+professors  (professor_id PK, department_id FK, name, designation)
+students    (student_id PK, program_id FK, roll_no, name, cgpa)
+courses     (course_id PK, department_id FK, course_code, title)
 ```
 
 ### Example prompts to test
-
-```
-Show all users from California
-Find top 5 products sold in 2025
+professors in the CSE department
+Find top 5 students in ME branch
+Get average attendance for section A
+List exams for this month
 Get average revenue per month
 List orders with status processing
 Count users who registered in the last 7 days

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RiSettings3Line } from 'react-icons/ri';
 
@@ -14,14 +14,8 @@ const SYSTEM_LOGS = [
 ];
 
 const Loader = () => {
-  const [logs, setLogs] = useState([]);
-  const [currentStep, setCurrentStep] = useState(0);
-
-  // Add system logs one by one to simulate compilation output
-  useEffect(() => {
-    setLogs([`[SYSTEM] INIT: ${SYSTEM_LOGS[0]}`]);
-    setCurrentStep(1);
-  }, []);
+  const [logs, setLogs] = useState([`[SYSTEM] INIT: ${SYSTEM_LOGS[0]}`]);
+  const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
     if (currentStep >= SYSTEM_LOGS.length) return;

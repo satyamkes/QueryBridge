@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import InputBox from '../components/InputBox';
 import QueryCard from '../components/QueryCard';
@@ -8,13 +8,14 @@ import { generateSqlQuery } from '../services/api';
 import { RiDatabaseLine, RiCpuLine, RiNodeTree, RiBrainLine, RiMicLine, RiDownloadLine, RiFlashlightLine, RiSearchEyeLine, RiAlertLine } from 'react-icons/ri';
 
 const DATABASE_SCHEMA = [
-  { name: 'users',       count: 188,  columns: ['id (PK)', 'name', 'email', 'state', 'created_at'] },
-  { name: 'products',    count: 45,   columns: ['product_id (PK)', 'name', 'price', 'category'] },
-  { name: 'orders',      count: 890,  columns: ['order_id (PK)', 'user_id (FK)', 'order_date', 'total_amount', 'status'] },
-  { name: 'order_items', count: 2410, columns: ['item_id (PK)', 'order_id (FK)', 'product_id (FK)', 'quantity', 'total_price'] },
+  { name: 'students',       count: 27, columns: ['student_id (PK)', 'roll_no', 'name', 'program_id (FK)', 'current_year', 'section', 'cgpa'] },
+  { name: 'departments',    count: 8,  columns: ['department_id (PK)', 'code', 'name', 'building', 'hod_name'] },
+  { name: 'professors',     count: 16, columns: ['professor_id (PK)', 'department_id (FK)', 'name', 'designation', 'specialization'] },
+  { name: 'courses',        count: 16, columns: ['course_id (PK)', 'department_id (FK)', 'course_code', 'title', 'credits', 'semester'] },
+  { name: 'results',        count: 96, columns: ['result_id (PK)', 'enrollment_id (FK)', 'exam_id (FK)', 'marks_obtained', 'grade'] },
 ];
 
-const MAX_ROWS = 2410; // for progress bar scaling
+const MAX_ROWS = 96; // for progress bar scaling
 
 const FEATURE_PILLS = [
   { icon: RiBrainLine,    label: 'NLP → SQL',       color: 'neon-cyan'   },
@@ -259,7 +260,7 @@ const Home = ({ prompt, setPrompt, queryResult, setQueryResult, isPending, setIs
 
                 {/* Hint row */}
                 <div className="flex items-center gap-3 mt-1">
-                  {['users', 'orders', 'products'].map((t) => (
+                  {['students', 'branches', 'professors'].map((t) => (
                     <span key={t} className="font-mono text-[9px] px-2 py-1 rounded bg-theme-text/5 border border-theme-text/5 text-theme-dim">
                       {t}
                     </span>
@@ -316,7 +317,7 @@ const Home = ({ prompt, setPrompt, queryResult, setQueryResult, isPending, setIs
                     Error Description:
                   </p>
                   <p className="font-sans text-sm text-theme-muted">
-                    {queryResult.error || "The query is not relevant to the current database tables. Please query database concepts (users, products, orders, or revenues)."}
+                    {queryResult.error || "The query is not relevant to the institute database. Please query students, branches, professors, courses, exams, results, or attendance."}
                   </p>
                 </div>
               </motion.div>

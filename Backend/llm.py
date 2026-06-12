@@ -28,15 +28,34 @@ from config import Config
 DB_SCHEMA_DESCRIPTION = """
 Tables in the PostgreSQL database:
 
-1. users (id PK, name, email, state CHAR(2), created_at DATE)
-2. products (product_id PK VARCHAR, name, price NUMERIC, category VARCHAR)
-3. orders (order_id PK VARCHAR, user_id FK→users.id, order_date DATE,
-           total_amount NUMERIC, status VARCHAR)
-4. order_items (item_id PK SERIAL, order_id FK→orders.order_id,
-                product_id FK→products.product_id,
-                quantity INTEGER, total_price NUMERIC)
-5. student (student_id PK, name, math INT, science INT, english INT,
-            history INT, hindi INT, average NUMERIC)
+1. institutes (institute_id PK, name, short_name, city, state,
+               established_year, institute_type, website)
+2. departments (department_id PK, institute_id FK→institutes.institute_id,
+                code, name, building, hod_name)
+3. programs (program_id PK, department_id FK→departments.department_id,
+             degree, name, duration_years, total_seats)
+4. professors (professor_id PK, department_id FK→departments.department_id,
+               name, designation, email, specialization, office_room, joining_year)
+5. students (student_id PK VARCHAR, program_id FK→programs.program_id,
+             roll_no, name, gender, admission_year, current_year,
+             section, email, cgpa)
+6. courses (course_id PK VARCHAR, department_id FK→departments.department_id,
+            course_code, title, credits, semester)
+7. class_sections (section_id PK, course_id FK→courses.course_id,
+                   professor_id FK→professors.professor_id, academic_year,
+                   semester_type, section, room, schedule)
+8. enrollments (enrollment_id PK, student_id FK→students.student_id,
+                section_id FK→class_sections.section_id, attendance_percent)
+9. exams (exam_id PK, section_id FK→class_sections.section_id,
+          exam_type, exam_date, max_marks, weightage_percent)
+10. results (result_id PK, enrollment_id FK→enrollments.enrollment_id,
+             exam_id FK→exams.exam_id, marks_obtained, grade)
+
+Useful joins:
+- students → programs → departments to answer branch, degree, year, and section questions.
+- departments → professors to answer faculty and HOD questions.
+- students → enrollments → class_sections → courses for course registrations.
+- enrollments → results → exams for marks, grades, exam results, and performance.
 """
 
 SYSTEM_PROMPT = f"""You are QueryBridge, an expert PostgreSQL query generator.
@@ -50,6 +69,8 @@ Rules you must follow:
   DROP, ALTER, CREATE, TRUNCATE, or any other mutating statement.
 - Use ANSI SQL that is 100%% compatible with PostgreSQL 16.
 - Use proper JOIN syntax when multiple tables are needed.
+- Treat "branch" as the student's department/program branch.
+- Treat "NIT Agartala", "NITA", and "National Institute of Technology Agartala" as the same institute.
 - Apply LIMIT 100 when the user does not specify a row limit, to avoid
   returning enormous result sets.
 - If a question is ambiguous, make the most reasonable assumption and

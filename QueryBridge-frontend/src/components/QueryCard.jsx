@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RiFileCopyLine, RiCheckLine, RiTerminalBoxLine, RiTimerLine, RiCpuLine } from 'react-icons/ri';
 
@@ -70,10 +70,9 @@ const TOKEN_COLORS = {
 const QueryCard = ({ queryResult, onTypingComplete }) => {
   const { query, sql, latency, tokensUsed, database, mode } = queryResult;
   const [copied, setCopied] = useState(false);
-  const [typedSql, setTypedSql] = useState('');
+  const [typingState, setTypingState] = useState({ source: sql, text: '' });
 
   useEffect(() => {
-    setTypedSql('');
     let currentIndex = 0;
     const interval = setInterval(() => {
       if (currentIndex >= sql.length) {
@@ -84,12 +83,16 @@ const QueryCard = ({ queryResult, onTypingComplete }) => {
         return;
       }
       const char = sql.charAt(currentIndex);
-      setTypedSql((prev) => prev + char);
+      setTypingState((prev) => ({
+        source: sql,
+        text: prev.source === sql ? prev.text + char : char,
+      }));
       currentIndex++;
     }, 8);
     return () => clearInterval(interval);
   }, [sql, onTypingComplete]);
 
+  const typedSql = typingState.source === sql ? typingState.text : '';
   const handleCopy = () => {
     navigator.clipboard.writeText(sql);
     setCopied(true);

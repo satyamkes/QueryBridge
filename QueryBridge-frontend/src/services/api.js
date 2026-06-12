@@ -2,13 +2,16 @@
 import axios from 'axios';
 
 // Load initial API base URL from localStorage or fallback to standard Flask local development port
-const DEFAULT_API_URL = 'http://localhost:5000/api';
+const DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const AUTH_TOKEN_KEY = 'QUERYBRIDGE_AUTH_TOKEN';
+const AUTH_USER_KEY = 'QUERYBRIDGE_AUTH_USER';
 let apiBaseUrl = localStorage.getItem('QUERYBRIDGE_API_URL') || DEFAULT_API_URL;
 
 export const getApiUrl = () => apiBaseUrl;
 
 export const setApiUrl = (url) => {
   apiBaseUrl = url;
+  api.defaults.baseURL = url;
   localStorage.setItem('QUERYBRIDGE_API_URL', url);
 };
 
@@ -18,7 +21,7 @@ const CUSTOM_TABLES_KEY = 'QUERYBRIDGE_CUSTOM_TABLES';
 const loadCustomTables = () => {
   try {
     return JSON.parse(localStorage.getItem(CUSTOM_TABLES_KEY) || '[]');
-  } catch (e) {
+  } catch {
     return [];
   }
 };
@@ -58,61 +61,138 @@ const api = axios.create({
   timeout: 15000, // 15 seconds
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const getStoredAuth = () => {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const rawUser = localStorage.getItem(AUTH_USER_KEY);
+  if (!token || !rawUser) return null;
+
+  try {
+    return { token, user: JSON.parse(rawUser) };
+  } catch {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    return null;
+  }
+};
+
+const persistAuth = ({ token, user }) => {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  return { token, user };
+};
+
+const authErrorMessage = (error, fallback) => {
+  return error?.response?.data?.message || error?.response?.data?.error || fallback;
+};
+
+export const registerUser = async ({ name, email, password }) => {
+  try {
+    const response = await api.post('/auth/register', { name, email, password });
+    return { success: true, ...persistAuth(response.data) };
+  } catch (error) {
+    return {
+      success: false,
+      error: authErrorMessage(error, 'Registration failed. Please try again.'),
+    };
+  }
+};
+
+export const loginUser = async ({ email, password }) => {
+  try {
+    const response = await api.post('/auth/login', { email, password });
+    return { success: true, ...persistAuth(response.data) };
+  } catch (error) {
+    return {
+      success: false,
+      error: authErrorMessage(error, 'Login failed. Please check your credentials.'),
+    };
+  }
+};
+
+export const fetchCurrentUser = async () => {
+  try {
+    const response = await api.get('/auth/me');
+    const current = getStoredAuth();
+    const auth = { token: current?.token, user: response.data.user };
+    if (auth.token) persistAuth(auth);
+    return { success: true, user: response.data.user };
+  } catch (error) {
+    logoutUser();
+    return {
+      success: false,
+      error: authErrorMessage(error, 'Your session has expired. Please log in again.'),
+    };
+  }
+};
+
+export const logoutUser = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+};
+
 // High-fidelity Mock responses for demonstration and offline mode
 const MOCK_QUERIES = [
   {
-    keywords: ['user', 'california', 'ca'],
-    sql: `SELECT id, name, email, state, created_at \nFROM users \nWHERE state = 'CA' \nORDER BY created_at DESC;`,
-    columns: ['id', 'name', 'email', 'state', 'created_at'],
+    keywords: ['cse', 'computer', 'student', 'students', 'cgpa'],
+    sql: `SELECT s.roll_no, s.name, p.name AS program, d.code AS branch, s.current_year, s.section, s.cgpa\nFROM students s\nJOIN programs p ON p.program_id = s.program_id\nJOIN departments d ON d.department_id = p.department_id\nWHERE d.code = 'CSE' AND s.cgpa >= 8.5\nORDER BY s.cgpa DESC\nLIMIT 100;`,
+    columns: ['roll_no', 'name', 'program', 'branch', 'current_year', 'section', 'cgpa'],
     rows: [
-      { id: 104, name: 'Elena Rostova', email: 'elena.r@nebula.io', state: 'CA', created_at: '2026-05-20' },
-      { id: 112, name: 'Marcus Vance', email: 'm.vance@orion.org', state: 'CA', created_at: '2026-05-18' },
-      { id: 139, name: 'Serah Chen', email: 'schen@quantum.com', state: 'CA', created_at: '2026-05-12' },
-      { id: 152, name: 'Jared Leto', email: 'jleto@galaxy.net', state: 'CA', created_at: '2026-05-09' },
-      { id: 188, name: 'Tasha Yar', email: 'tyar@starfleet.mil', state: 'CA', created_at: '2026-05-01' }
+      { roll_no: '22UCS002', name: 'Ishita Roy', program: 'Computer Science and Engineering', branch: 'CSE', current_year: 4, section: 'A', cgpa: 9.12 },
+      { roll_no: '23UCS012', name: 'Ananya Deb', program: 'Computer Science and Engineering', branch: 'CSE', current_year: 3, section: 'B', cgpa: 8.94 },
+      { roll_no: '22UCS001', name: 'Aarav Sharma', program: 'Computer Science and Engineering', branch: 'CSE', current_year: 4, section: 'A', cgpa: 8.82 },
+      { roll_no: '24UCS022', name: 'Mitali Chakma', program: 'Computer Science and Engineering', branch: 'CSE', current_year: 2, section: 'A', cgpa: 8.67 }
     ]
   },
   {
-    keywords: ['product', 'top', 'sold', '2025', 'best'],
-    sql: `SELECT p.product_id, p.name, SUM(o.quantity) as total_sold, SUM(o.total_price) as revenue \nFROM order_items o \nJOIN products p ON o.product_id = p.product_id \nWHERE o.order_date >= '2025-01-01' AND o.order_date <= '2025-12-31' \nGROUP BY p.product_id, p.name \nORDER BY total_sold DESC \nLIMIT 5;`,
-    columns: ['product_id', 'name', 'total_sold', 'revenue'],
+    keywords: ['professor', 'faculty', 'hod', 'department'],
+    sql: `SELECT d.code AS branch, d.name AS department, p.name, p.designation, p.specialization, p.office_room\nFROM professors p\nJOIN departments d ON d.department_id = p.department_id\nORDER BY d.code, p.designation DESC, p.name\nLIMIT 100;`,
+    columns: ['branch', 'department', 'name', 'designation', 'specialization', 'office_room'],
     rows: [
-      { product_id: 'PRD-808', name: 'Hover Propulsion Module v4', total_sold: 1420, revenue: '$283,580.00' },
-      { product_id: 'PRD-102', name: 'Quantum Core Reactor', total_sold: 980, revenue: '$1,460,200.00' },
-      { product_id: 'PRD-441', name: 'Cybernetic Neural Link', total_sold: 840, revenue: '$335,160.00' },
-      { product_id: 'PRD-009', name: 'Sub-space Receiver', total_sold: 720, revenue: '$71,928.00' },
-      { product_id: 'PRD-773', name: 'Tachyon Containment Grid', total_sold: 450, revenue: '$899,550.00' }
+      { branch: 'CSE', department: 'Computer Science and Engineering', name: 'Prof. Anirban Das', designation: 'Professor', specialization: 'Database Systems', office_room: 'CSE-201' },
+      { branch: 'CSE', department: 'Computer Science and Engineering', name: 'Dr. Priyanka Sinha', designation: 'Associate Professor', specialization: 'Machine Learning', office_room: 'CSE-214' },
+      { branch: 'ECE', department: 'Electronics and Communication Engineering', name: 'Prof. Meera Debbarma', designation: 'Professor', specialization: 'VLSI Design', office_room: 'ECE-301' },
+      { branch: 'EE', department: 'Electrical Engineering', name: 'Prof. Rajat Sen', designation: 'Professor', specialization: 'Power Systems', office_room: 'EE-101' }
     ]
   },
   {
-    keywords: ['revenue', 'month', 'average'],
-    sql: `SELECT DATE_TRUNC('month', order_date) as order_month, \n       ROUND(AVG(total_amount), 2) as avg_revenue, \n       COUNT(order_id) as total_orders \nFROM orders \nGROUP BY order_month \nORDER BY order_month DESC;`,
-    columns: ['order_month', 'avg_revenue', 'total_orders'],
+    keywords: ['result', 'results', 'marks', 'grade', 'exam'],
+    sql: `SELECT s.roll_no, s.name, c.course_code, c.title, ex.exam_type, r.marks_obtained, ex.max_marks, r.grade\nFROM results r\nJOIN exams ex ON ex.exam_id = r.exam_id\nJOIN enrollments e ON e.enrollment_id = r.enrollment_id\nJOIN students s ON s.student_id = e.student_id\nJOIN class_sections cs ON cs.section_id = e.section_id\nJOIN courses c ON c.course_id = cs.course_id\nORDER BY s.roll_no, c.course_code, ex.exam_date\nLIMIT 100;`,
+    columns: ['roll_no', 'name', 'course_code', 'title', 'exam_type', 'marks_obtained', 'max_marks', 'grade'],
     rows: [
-      { order_month: '2026-05 (Current)', avg_revenue: '$3,845.20', total_orders: 142 },
-      { order_month: '2026-04', avg_revenue: '$4,102.50', total_orders: 198 },
-      { order_month: '2026-03', avg_revenue: '$3,920.80', total_orders: 185 },
-      { order_month: '2026-02', avg_revenue: '$3,780.00', total_orders: 160 },
-      { order_month: '2026-01', avg_revenue: '$4,520.10', total_orders: 210 }
+      { roll_no: '22UCS001', name: 'Aarav Sharma', course_code: 'CS401', title: 'Machine Learning', exam_type: 'Mid Semester', marks_obtained: 24.6, max_marks: 30, grade: 'A' },
+      { roll_no: '22UCS001', name: 'Aarav Sharma', course_code: 'CS401', title: 'Machine Learning', exam_type: 'End Semester', marks_obtained: 58.1, max_marks: 70, grade: 'A' },
+      { roll_no: '22UCS002', name: 'Ishita Roy', course_code: 'CS401', title: 'Machine Learning', exam_type: 'Mid Semester', marks_obtained: 26.4, max_marks: 30, grade: 'A+' },
+      { roll_no: '22UCS002', name: 'Ishita Roy', course_code: 'CS401', title: 'Machine Learning', exam_type: 'End Semester', marks_obtained: 61.6, max_marks: 70, grade: 'A+' }
     ]
   },
   {
-    keywords: ['count', 'register', 'week', 'new'],
-    sql: `SELECT COUNT(*) as user_count \nFROM users \nWHERE created_at >= CURRENT_DATE - INTERVAL '7 days';`,
-    columns: ['user_count'],
+    keywords: ['branch', 'branches', 'seat', 'seats', 'program'],
+    sql: `SELECT d.code AS branch, d.name AS department, p.degree, p.name AS program, p.total_seats\nFROM programs p\nJOIN departments d ON d.department_id = p.department_id\nORDER BY d.code, p.degree;`,
+    columns: ['branch', 'department', 'degree', 'program', 'total_seats'],
     rows: [
-      { user_count: 87 }
+      { branch: 'CE', department: 'Civil Engineering', degree: 'B.Tech', program: 'Civil Engineering', total_seats: 90 },
+      { branch: 'CSE', department: 'Computer Science and Engineering', degree: 'B.Tech', program: 'Computer Science and Engineering', total_seats: 120 },
+      { branch: 'CSE', department: 'Computer Science and Engineering', degree: 'M.Tech', program: 'Data Science and Engineering', total_seats: 30 },
+      { branch: 'ECE', department: 'Electronics and Communication Engineering', degree: 'B.Tech', program: 'Electronics and Communication Engineering', total_seats: 120 }
     ]
   },
   {
-    keywords: ['order', 'processing', 'status'],
-    sql: `SELECT order_id, user_id, order_date, total_amount, status \nFROM orders \nWHERE status = 'processing' \nORDER BY order_date DESC;`,
-    columns: ['order_id', 'user_id', 'order_date', 'total_amount', 'status'],
+    keywords: ['attendance', 'section', 'course', 'courses'],
+    sql: `SELECT s.roll_no, s.name, d.code AS branch, c.course_code, c.title, cs.section, e.attendance_percent\nFROM enrollments e\nJOIN students s ON s.student_id = e.student_id\nJOIN programs p ON p.program_id = s.program_id\nJOIN departments d ON d.department_id = p.department_id\nJOIN class_sections cs ON cs.section_id = e.section_id\nJOIN courses c ON c.course_id = cs.course_id\nORDER BY e.attendance_percent ASC\nLIMIT 100;`,
+    columns: ['roll_no', 'name', 'branch', 'course_code', 'title', 'section', 'attendance_percent'],
     rows: [
-      { order_id: 'ORD-9988', user_id: 112, order_date: '2026-05-26', total_amount: '$149.99', status: 'processing' },
-      { order_id: 'ORD-9985', user_id: 104, order_date: '2026-05-26', total_amount: '$1,299.00', status: 'processing' },
-      { order_id: 'ORD-9972', user_id: 188, order_date: '2026-05-25', total_amount: '$45.50', status: 'processing' },
-      { order_id: 'ORD-9951', user_id: 152, order_date: '2026-05-23', total_amount: '$312.00', status: 'processing' }
+      { roll_no: '23UEC013', name: 'Rohan Paul', branch: 'ECE', course_code: 'EC301', title: 'Digital Signal Processing', section: 'A', attendance_percent: 78.0 },
+      { roll_no: '24UEE023', name: 'Tanmoy Biswas', branch: 'EE', course_code: 'EE301', title: 'Power Systems', section: 'A', attendance_percent: 79.0 },
+      { roll_no: '22UME006', name: 'Arjun Tripathi', branch: 'ME', course_code: 'ME401', title: 'Robotics and Automation', section: 'B', attendance_percent: 81.0 },
+      { roll_no: '23UCH018', name: 'Moumita Pal', branch: 'CHE', course_code: 'CH301', title: 'Chemical Reaction Engineering', section: 'A', attendance_percent: 82.0 }
     ]
   }
 ];
@@ -132,7 +212,7 @@ const findMockMatch = (queryText) => {
         return { keywords: [name, ...(tbl.columns || [])], sql, columns: cols, rows };
       }
     }
-  } catch (e) {
+  } catch {
     // ignore and continue to built-in mocks
   }
   for (const mock of MOCK_QUERIES) {
@@ -143,11 +223,11 @@ const findMockMatch = (queryText) => {
   
   // Generic fallback if no keyword matches
   return {
-    sql: `SELECT * \nFROM database_records \nWHERE query_match = '${queryText.replace(/'/g, "''")}' \nLIMIT 10;`,
-    columns: ['record_id', 'query_fragment', 'ai_match_score', 'timestamp', 'system_status'],
+    sql: `SELECT s.roll_no, s.name, d.code AS branch, s.current_year, s.section, s.cgpa\nFROM students s\nJOIN programs p ON p.program_id = s.program_id\nJOIN departments d ON d.department_id = p.department_id\nWHERE s.name ILIKE '%${queryText.replace(/'/g, "''")}%' OR d.name ILIKE '%${queryText.replace(/'/g, "''")}%' \nLIMIT 10;`,
+    columns: ['roll_no', 'name', 'branch', 'current_year', 'section', 'cgpa'],
     rows: [
-      { record_id: 1, query_fragment: queryText.length > 30 ? queryText.slice(0, 30) + '...' : queryText, ai_match_score: 0.94, timestamp: new Date().toISOString().split('T')[0], system_status: 'resolved' },
-      { record_id: 2, query_fragment: 'Secondary structural lookup', ai_match_score: 0.81, timestamp: new Date().toISOString().split('T')[0], system_status: 'cached' }
+      { roll_no: '22UCS002', name: 'Ishita Roy', branch: 'CSE', current_year: 4, section: 'A', cgpa: 9.12 },
+      { roll_no: '23UMC019', name: 'Trisha Mandal', branch: 'MNC', current_year: 3, section: 'B', cgpa: 9.04 }
     ]
   };
 };
@@ -158,12 +238,14 @@ export const isQueryRelevant = (queryText) => {
 
   // List of terms that indicate relevance to our database schema
   const schemaTerms = [
-    'user', 'member', 'customer', 'people', 'state', 'california', 'ca',
-    'student', 'students',
-    'product', 'item', 'price', 'category',
-    'order', 'purchase', 'transaction', 'status', 'processing',
-    'revenue', 'sales', 'earn', 'month', 'year', '2025',
-    'count', 'register', 'new', 'average', 'avg'
+    'nit', 'nita', 'agartala', 'institute', 'campus',
+    'department', 'departments', 'branch', 'branches', 'program', 'programs',
+    'student', 'students', 'roll', 'section', 'year', 'cgpa', 'admission',
+    'professor', 'professors', 'faculty', 'hod', 'designation', 'specialization',
+    'course', 'courses', 'credit', 'semester', 'class',
+    'exam', 'exams', 'result', 'results', 'marks', 'grade', 'attendance',
+    'cse', 'ece', 'ee', 'me', 'ce', 'che', 'mnc', 'physics',
+    'b.tech', 'btech', 'm.tech', 'mtech', 'count', 'average', 'avg', 'top', 'highest'
   ];
 
   if (schemaTerms.some(term => normalized.includes(term))) return true;
@@ -175,7 +257,7 @@ export const isQueryRelevant = (queryText) => {
       if (normalized.includes(tbl.name.toLowerCase())) return true;
       if (Array.isArray(tbl.columns) && tbl.columns.some(c => normalized.includes(c.toLowerCase()))) return true;
     }
-  } catch (e) {
+  } catch {
     // ignore errors and fall through
   }
 
@@ -203,7 +285,7 @@ export const generateSqlQuery = async (prompt, forceSimulation = false) => {
     if (response.data.error || response.data.success === false) {
       return {
         success: false,
-        error: response.data.error || "Failed to generate SQL query.",
+        error: response.data.error || response.data.message || "Failed to generate SQL query.",
         query: prompt,
         sql: "",
         columns: [],
@@ -226,6 +308,21 @@ export const generateSqlQuery = async (prompt, forceSimulation = false) => {
       mode: 'live'
     };
   } catch (error) {
+    if (error?.response?.status === 401) {
+      logoutUser();
+      return {
+        success: false,
+        error: 'Your session has expired. Please log in again.',
+        query: prompt,
+        sql: "",
+        columns: [],
+        rows: [],
+        latency: '0ms',
+        tokensUsed: 0,
+        database: 'Authentication',
+        mode: 'auth'
+      };
+    }
     console.warn('API error or connection refused. Falling back to Quantum Simulation Engine.', error);
     // Graceful fallback with simulated delay
     return simulateApiCall(prompt);
@@ -243,7 +340,7 @@ const simulateApiCall = (prompt) => {
       if (!isRelevant) {
         resolve({
           success: false,
-          error: "No matching database tables or fields (like 'users', 'products', 'orders', or 'revenue') could be resolved from your query. Please refer to the Target Schema Info sidebar for helper fields.",
+          error: "No matching institute tables or fields could be resolved from your query. Try asking about students, branches, professors, courses, exams, results, attendance, or NIT Agartala.",
           query: prompt,
           sql: "",
           columns: [],

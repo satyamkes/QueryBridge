@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiHome5Line, RiHistoryLine, RiInformationLine, RiSettings4Line, RiCpuLine, RiSunLine, RiMoonLine, RiDatabase2Line } from 'react-icons/ri';
+import { RiHome5Line, RiHistoryLine, RiInformationLine, RiSettings4Line, RiCpuLine, RiSunLine, RiMoonLine, RiDatabase2Line, RiLogoutCircleRLine, RiShieldUserLine } from 'react-icons/ri';
 import logo from '../assets/logo.svg';
 import { getApiUrl, setApiUrl, getCustomTables, addCustomTable, removeCustomTable } from '../services/api';
 
-const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme }) => {
+const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme, user, onLogout }) => {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [apiUrl, setApiUrlState] = useState(getApiUrl());
@@ -98,6 +98,13 @@ const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme }) => {
               <span>CORE: ONLINE</span>
             </div>
 
+            {user && (
+              <div className="hidden lg:flex items-center gap-2 bg-theme-text/5 border border-theme-text/10 rounded-lg px-3 py-1.5 font-mono text-[10px] tracking-wide text-theme-muted">
+                <RiShieldUserLine className="text-neon-cyan" />
+                <span className="max-w-32 truncate">{user.name}</span>
+              </div>
+            )}
+
             {/* Theme Toggle Button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -129,6 +136,16 @@ const Navbar = ({ currentPage, setCurrentPage, theme, toggleTheme }) => {
               title="Manage Custom Tables"
             >
               <RiDatabase2Line className="text-lg" />
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onLogout}
+              className="p-2.5 rounded-lg bg-theme-text/5 hover:bg-red-500/10 border border-theme-text/10 hover:border-red-400/40 text-theme-text/80 hover:text-red-300 transition-all duration-300 shadow-[0_0_10px_rgba(255,0,80,0.05)] cursor-pointer"
+              title="Logout"
+            >
+              <RiLogoutCircleRLine className="text-lg" />
             </motion.button>
           </div>
         </div>
@@ -282,7 +299,7 @@ const CustomTablesPanel = () => {
       try {
         parsedRows = JSON.parse(rowsJson);
         if (!Array.isArray(parsedRows)) throw new Error('Rows must be an array');
-      } catch (err) {
+      } catch {
         setMessage('Invalid JSON for rows (must be an array of objects).');
         return;
       }

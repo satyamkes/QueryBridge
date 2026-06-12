@@ -1,16 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiHistoryLine, RiDeleteBin5Line, RiTerminalBoxLine, RiFileCopyLine, RiCheckLine, RiPlayLine, RiDatabaseLine } from 'react-icons/ri';
+import { RiHistoryLine, RiDeleteBin5Line, RiFileCopyLine, RiCheckLine, RiPlayLine, RiDatabaseLine } from 'react-icons/ri';
 
 const History = ({ onReRun }) => {
-  const [historyItems, setHistoryItems] = useState([]);
+  const [historyItems, setHistoryItems] = useState(() => JSON.parse(localStorage.getItem('QUERYBRIDGE_HISTORY') || '[]'));
   const [copiedId, setCopiedId] = useState(null);
-
-  // Load history from localStorage on mount
-  useEffect(() => {
-    const items = JSON.parse(localStorage.getItem('QUERYBRIDGE_HISTORY') || '[]');
-    setHistoryItems(items);
-  }, []);
 
   const handleDeleteItem = (id) => {
     const updated = historyItems.filter(item => item.id !== id);
