@@ -151,6 +151,24 @@ def fetch_schema_info(conn: psycopg2.extensions.connection) -> list[dict]:
     return tables
 
 
+AUTH_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS auth_users (
+    id            SERIAL PRIMARY KEY,
+    name          VARCHAR(120) NOT NULL,
+    email         VARCHAR(200) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""
+
+
+def init_auth_schema() -> None:
+    """Create authentication tables if they do not exist."""
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(AUTH_SCHEMA_SQL)
+
+
 SEED_SQL = """
 -- ─── Schema ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (

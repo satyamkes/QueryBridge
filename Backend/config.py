@@ -18,7 +18,9 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 
-    _cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5174,http://localhost:3000")
+    AUTH_TOKEN_TTL_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", 60 * 60 * 24 * 7))
+
+    _cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:3000")
     CORS_ORIGINS = [o.strip() for o in _cors_raw.split(",")]
 
     
