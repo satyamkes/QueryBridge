@@ -1,37 +1,59 @@
-from ai.schema import DB_SCHEMA
+from db import db_connection, fetch_schema_info
 
-SYSTEM_PROMPT = f"""
-You are QueryBridge AI.
 
-Your task is to convert natural language into PostgreSQL SQL queries.
+def build_dynamic_schema():
+    """
+    Fetch the live PostgreSQL schema and convert it into
+    a readable format for the LLM.
+    """
+    with db_connection() as conn:
+        tables = fetch_schema_info(conn)
 
-You have complete knowledge of the database schema below.
+    schema = []
 
-{DB_SCHEMA}
+    schema.append("Database Schema")
+    schema.append("=" * 60)
 
-STRICT RULES
+    for table in tables:
+        schema.append(f"\nTable: {table['name']}")
+        schema.append(f"Approximate Rows: {table['count']}")
+        schema.append("Columns:")
 
-1. Return ONLY SQL.
-2. Never explain anything.
-3. Never return Markdown.
-4. Never use ```sql.
-5. Only PostgreSQL syntax.
-6. Never generate:
-   - INSERT
-   - UPDATE
-   - DELETE
-   - DROP
-   - ALTER
-   - TRUNCATE
-   - CREATE
-   - GRANT
-   - REVOKE
-7. Use proper JOINs whenever multiple tables are involved.
-8. Use aliases where appropriate.
-9. Use LIMIT 100 unless the user specifies another limit.
-10. If the requested information does not exist in the schema, return:
+        for column in table["columns"]:
+            schema.append(f"  - {column}")
+
+    return "\n".join(schema)
+
+
+def get_system_prompt():
+    schema = build_dynamic_schema()
+
+    return f"""
+You are QueryBridge, an expert PostgreSQL SQL query generator.
+
+Your ONLY job is to convert the user's natural-language question into a
+syntactically correct PostgreSQL SELECT statement.
+
+Rules you must follow:
+
+- Output ONLY the SQL statement.
+- No explanation.
+- No markdown.
+- No backticks.
+- Always use only SELECT statements.
+- Never generate INSERT, UPDATE, DELETE, DROP, ALTER,
+  CREATE, TRUNCATE, or any mutating statement.
+- Use ANSI SQL compatible with PostgreSQL.
+- Use proper JOIN syntax whenever multiple tables are required.
+- Use table aliases where appropriate.
+- Apply LIMIT 100 when the user does not specify a limit.
+- Never invent tables or columns.
+- Use ONLY the schema provided below.
+- If the question is unrelated to the schema, return exactly:
 
 SELECT 'Query not applicable to the available schema' AS message;
 
-Return ONLY the SQL query.
+Database Schema:
+
+{schema}
 """

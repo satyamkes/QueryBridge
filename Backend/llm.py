@@ -29,14 +29,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from config import Config
-from ai.prompt import SYSTEM_PROMPT
+from ai.prompt import get_system_prompt
 
 
-def count_tokens(prompt: str, sql: str) -> int:
+def count_tokens(SYSTEM_PROMPT: str, prompt: str, sql: str) -> int:
     """
-    Approximates total tokens consumed.
-    Ollama does not return token counts in its /api/chat response by
-    default, so we use the well-known ≈4 chars-per-token heuristic.
+    Approximate token count using the 4 chars/token heuristic.
     """
     combined = SYSTEM_PROMPT + prompt + sql
     return max(1, len(combined) // 4)
@@ -44,18 +42,18 @@ def count_tokens(prompt: str, sql: str) -> int:
 
 def translate_to_sql(prompt: str) -> str:
     """
-    Send `prompt` to Ollama and return a clean PostgreSQL SELECT string.
-
-    Raises:
-        ValueError – when the LLM response cannot be parsed into valid SQL.
-        RuntimeError – when Ollama is unreachable or returns an HTTP error.
+    Send prompt to Ollama and return a validated PostgreSQL SELECT query.
     """
+
+    # Build the schema-aware system prompt only once
+    SYSTEM_PROMPT = get_system_prompt()
+
     payload = {
         "model": Config.OLLAMA_MODEL,
         "stream": False,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": prompt},
+            {"role": "user", "content": prompt},
         ],
     }
 
@@ -66,57 +64,63 @@ def translate_to_sql(prompt: str) -> str:
             timeout=Config.OLLAMA_TIMEOUT,
         )
         response.raise_for_status()
+
     except requests.exceptions.ConnectionError:
         raise RuntimeError(
             "Cannot reach Ollama service. "
             "Make sure Ollama is running (`ollama serve`) and "
             f"listening on {Config.OLLAMA_BASE_URL}."
         )
+
     except requests.exceptions.Timeout:
         raise RuntimeError(
             f"Ollama did not respond within {Config.OLLAMA_TIMEOUT}s. "
             "Try a lighter model or increase OLLAMA_TIMEOUT."
         )
+
     except requests.exceptions.HTTPError as exc:
-        raise RuntimeError(f"Ollama API error {exc.response.status_code}: {exc}")
+        raise RuntimeError(
+            f"Ollama API error {exc.response.status_code}: {exc}"
+        )
 
     data = response.json()
 
-    raw_text: str = (
+    raw_text = (
         data.get("message", {}).get("content", "")
         or data.get("response", "")
     ).strip()
 
     if not raw_text:
-        raise ValueError("Ollama returned an empty response. Try rephrasing the prompt.")
+        raise ValueError(
+            "Ollama returned an empty response. Try rephrasing the prompt."
+        )
 
     sql = _clean_sql(raw_text)
     _validate_sql(sql)
+
+    # Optional: Calculate tokens if you need them later
+    tokens = count_tokens(SYSTEM_PROMPT, prompt, sql)
 
     return sql
 
 
 def _clean_sql(raw: str) -> str:
     """
-    Strip markdown code fences and any surrounding whitespace that some
-    models add despite the system prompt telling them not to.
-
-    Handles:
-        ```sql
-        SELECT ...
-        ```
-    and bare:
-        SELECT ...
+    Remove markdown code fences and normalize whitespace.
     """
-    # Remove ```sql ... ``` or ``` ... ``` fences
+
     cleaned = re.sub(r"```(?:sql)?\s*", "", raw, flags=re.IGNORECASE)
     cleaned = cleaned.replace("```", "").strip()
 
-    select_match = re.search(r"(SELECT\b.*)", cleaned, re.IGNORECASE | re.DOTALL)
+    select_match = re.search(
+        r"(SELECT\b.*)",
+        cleaned,
+        re.IGNORECASE | re.DOTALL,
+    )
+
     if select_match:
         cleaned = select_match.group(1).strip()
 
-    # Normalise excessive whitespace inside the query (keep newlines for readability)
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
 
     return cleaned
@@ -124,24 +128,19 @@ def _clean_sql(raw: str) -> str:
 
 def _validate_sql(sql: str) -> None:
     """
-    Lightweight safety check.
-
-    1. The query must start with SELECT (or the special "not applicable" message).
-    2. None of the blocked DML/DDL keywords may appear as whole words.
-
-    Raises ValueError with a user-friendly message on any violation.
+    Allow only read-only SELECT statements.
     """
+
     first_word = sql.split()[0].upper() if sql.split() else ""
 
-    if first_word not in ("SELECT",):
+    if first_word != "SELECT":
         raise ValueError(
             f"The AI produced a '{first_word}' statement instead of a SELECT. "
-            "Only read-only SELECT queries are permitted. Please rephrase."
+            "Only read-only SELECT queries are permitted."
         )
 
     for keyword in Config.BLOCKED_SQL_KEYWORDS:
         if re.search(rf"\b{keyword}\b", sql, re.IGNORECASE):
             raise ValueError(
-                f"Generated SQL contains a blocked keyword: '{keyword}'. "
-                "Only read-only SELECT queries are allowed."
+                f"Generated SQL contains blocked keyword '{keyword}'."
             )
