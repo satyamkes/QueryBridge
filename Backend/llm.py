@@ -22,65 +22,14 @@ model-agnostic; all tested models produce valid SQL when given it.
 import re
 import requests
 
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
 from config import Config
-
-
-DB_SCHEMA_DESCRIPTION = """
-Tables in the PostgreSQL database:
-
-1. institutes (institute_id PK, name, short_name, city, state,
-               established_year, institute_type, website)
-2. departments (department_id PK, institute_id FK→institutes.institute_id,
-                code, name, building, hod_name)
-3. programs (program_id PK, department_id FK→departments.department_id,
-             degree, name, duration_years, total_seats)
-4. professors (professor_id PK, department_id FK→departments.department_id,
-               name, designation, email, specialization, office_room, joining_year)
-5. students (student_id PK VARCHAR, program_id FK→programs.program_id,
-             roll_no, name, gender, admission_year, current_year,
-             section, email, cgpa)
-6. courses (course_id PK VARCHAR, department_id FK→departments.department_id,
-            course_code, title, credits, semester)
-7. class_sections (section_id PK, course_id FK→courses.course_id,
-                   professor_id FK→professors.professor_id, academic_year,
-                   semester_type, section, room, schedule)
-8. enrollments (enrollment_id PK, student_id FK→students.student_id,
-                section_id FK→class_sections.section_id, attendance_percent)
-9. exams (exam_id PK, section_id FK→class_sections.section_id,
-          exam_type, exam_date, max_marks, weightage_percent)
-10. results (result_id PK, enrollment_id FK→enrollments.enrollment_id,
-             exam_id FK→exams.exam_id, marks_obtained, grade)
-
-Useful joins:
-- students → programs → departments to answer branch, degree, year, and section questions.
-- departments → professors to answer faculty and HOD questions.
-- students → enrollments → class_sections → courses for course registrations.
-- enrollments → results → exams for marks, grades, exam results, and performance.
-"""
-
-SYSTEM_PROMPT = f"""You are QueryBridge, an expert PostgreSQL query generator.
-
-Your ONLY job is to convert the user's natural-language question into a
-syntactically correct PostgreSQL SELECT statement.
-
-Rules you must follow:
-- Output ONLY the SQL statement — no explanation, no markdown, no backticks.
-- Always use only SELECT statements. Never write INSERT, UPDATE, DELETE,
-  DROP, ALTER, CREATE, TRUNCATE, or any other mutating statement.
-- Use ANSI SQL that is 100%% compatible with PostgreSQL 16.
-- Use proper JOIN syntax when multiple tables are needed.
-- Treat "branch" as the student's department/program branch.
-- Treat "NIT Agartala", "NITA", and "National Institute of Technology Agartala" as the same institute.
-- Apply LIMIT 100 when the user does not specify a row limit, to avoid
-  returning enormous result sets.
-- If a question is ambiguous, make the most reasonable assumption and
-  still produce valid SQL.
-- If the question is completely unrelated to the database schema, output
-  exactly:  SELECT 'Query not applicable to the available schema' AS message;
-
-Database schema you must use:
-{DB_SCHEMA_DESCRIPTION}
-"""
+from ai.prompt import SYSTEM_PROMPT
 
 
 def count_tokens(prompt: str, sql: str) -> int:
